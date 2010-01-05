@@ -123,7 +123,7 @@ class WeatherProcessor:
             loopDirs = self.profilesDictionary[callLetters][1]
             loopDirArray = loopDirs.split(';')
             saveStills = self.profilesDictionary[callLetters][7]      #save newest image used in each loop to stills dir
-            if saveStills == "True":
+            if saveStills.lower() == "true":
                 saveStills = True
             localStillPath = self.path + 'stills/' + callLetters + '/'       #just for convenience
             localLoopPath = self.path + 'loops/' + callLetters + '/'
