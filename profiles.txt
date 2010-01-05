@@ -1,0 +1,21 @@
+#Config file for weather_config_v1.7.py. Currently, each size applies to both stills and loops.
+#use ; delimiter for multiple entry fields
+#Order is as follows: 
+#STATION|STILLFOLDERS|LOOPFOLDERS|DIMENSIONS|FRAMES|DURATION(100 = 1s)|ENDDELAY(0 = ignore)|TOP RADAR|SAVE RADARS AS STILLS|COMMENTS
+#KENS|/weather/images-to-resample|/weather/to-be-looped|640x480;160x120|5|100|0|||#
+KGW|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|radar-1||#
+KHOU|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|houston||#
+KING|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120;640x480;120x90|5|100|0|||#John wants Snoqualmie to have weird sizes: 704x480, 470x320, 160x109, 120x90. See 24480.
+KMOV|/weather/images-to-resample|/weather/to-be-looped|640x480;160x120;320x240|12|20|200|radar-adi|True|#
+#KMSB|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|5|100|0|||#
+#KREM|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|5|100|0|||#
+#KTVB|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|5|100|0|||#
+KTVK|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|county-radar||#
+KVUE|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|5|100|0|||#
+#NWCN|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|5|100|0|||#
+WCNC|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|temp1||#
+WFAA|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|regional||#
+WHAS|/weather/images-to-resample|/weather/to-be-looped|470x353;160x120|7|100|0|dop640a||#
+WVEC|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94;320x240|7|100|0|regional||#
+WWL|/weather/images-to-resample;/weather/barons/images-to-resample|/weather/to-be-looped;/weather/barons/to-be-looped|640x480;125x94|5|100|0|southeastla|#
+#KSKN|/weather/images-to-resample|/weather/to-be-looped|640x480;125x94|5|100|0|||#
