@@ -40,7 +40,7 @@ class WeatherProcessor:
         
         #loop in each config array -- as profiles!
         self.path = '/var/weather/'
-        self.log('Started run.')
+        #self.log('Started run.')
         profilesPath = self.path + 'profiles/'                          
         self.profilesDictionary = {}
         try:
@@ -154,6 +154,12 @@ class WeatherProcessor:
                     self.log(error)
                     return -1
                 self.ftp.dir(stillReturn.append)
+                fileSizesAtStart = {}
+                self.ftp.sendcmd("TYPE I")
+                for still in stillReturn:                               #get file sizes here for comparison later. We need to make sure they aren't still being uploaded.
+                    stillName = still.split()[-1]
+                    if stillName != '.' and stillName != '..':
+                        fileSizesAtStart[stillName] = self.ftp.size(dir + stillName)
                 # . . . compare w/ local list and download as needed
                 for still in stillReturn:                               #now compare and download
                     stillName = still.split()[-1]                       #grab last space-delimited chunk (i.e. name)
@@ -168,31 +174,36 @@ class WeatherProcessor:
                             tmpTime = int(mktime(strptime(str(curYear) + ' '  + stillTime, '%Y %b %d %H:%M')))
                             if tmpTime > curTime:                           #if the date returned is in the future, then it's for last year. This is needed because FTP doesn't return time with file lists if time is within last year. ARGH.
                                 tmpTime = int(mktime(strptime(str(curYear - 1) + ' ' + stillTime, '%Y %b %d %H:%M')))
-                        #download the differences
-                        try:
-                            localTimes[newStillName]
-                        except KeyError:
-                            localTimes[newStillName] = 0
-                        if tmpTime > localTimes[newStillName]:               #save copy of newer version locally
-                            thisImagePath = localStillPath + 'new/' 
-                            try: 
-                                localFile = open(thisImagePath + newStillName, 'wb')
-                            except:
-                                error = 'RETRIEVE: failed to open for retrieval ' + str(thisImagePath) + str(newStillName)
-                                print error
-                                self.log(error)
-                                return -1
+                        self.ftp.sendcmd("TYPE I")
+                        curSize = self.ftp.size(dir + stillName)
+                        if curSize == fileSizesAtStart[stillName] and curSize > 0:   #Make sure the file size hasn't changed. If it did, it's still being uploaded.
+                            #download the differences
                             try:
-                                self.ftp.retrbinary('RETR ' + dir + stillName, localFile.write)
-                            except:
-                                error = 'RETRIEVE: failed to retrieval ' + str(dir) + str(stillName) + ' or failed to write to file.'
-                                print error
-                                self.log(error)
-                                return -1
-                            localFile.close()
-                            x = self.img()                                  #make an image object to describe this still, and store it by call letter for easy access.
-                            x.describe(callLetters, thisImagePath, newStillName, localStillPath)
-                            self.imageList.append(x)
+                                localTimes[newStillName]
+                            except KeyError:
+                                localTimes[newStillName] = 0
+                            if tmpTime > localTimes[newStillName]:               #save copy of newer version locally
+                                thisImagePath = localStillPath + 'new/' 
+                                try: 
+                                    localFile = open(thisImagePath + newStillName, 'wb')
+                                except:
+                                    error = 'RETRIEVE: failed to open for retrieval ' + str(thisImagePath) + str(newStillName)
+                                    print error
+                                    self.log(error)
+                                    return -1
+                                try:
+                                    self.ftp.retrbinary('RETR ' + dir + stillName, localFile.write)
+                                except:
+                                    error = 'RETRIEVE: failed to retrieval ' + str(dir) + str(stillName) + ' or failed to write to file.'
+                                    print error
+                                    self.log(error)
+                                    return -1
+                                localFile.close()
+                                x = self.img()                                  #make an image object to describe this still, and store it by call letter for easy access.
+                                x.describe(callLetters, thisImagePath, newStillName, localStillPath)
+                                self.imageList.append(x)
+                        else:
+                            self.log('DEBUG: file still uploading: ' + stillName)
             
             #Loops are simpler. We'll just get every new file and then delete it.
             #We'll save files to /loops/new/loopname/int(currentepoch)filename.ext
@@ -207,6 +218,12 @@ class WeatherProcessor:
                         thisDir = []
                         self.ftp.cwd(dir + loopDir)
                         self.ftp.dir(thisDir.append)
+                        fileSizesAtStart = {}
+                        self.ftp.sendcmd("TYPE I")
+                        for image in thisDir:                               #get file sizes here for comparison later. We need to make sure they aren't still being uploaded.
+                            imageName = image.split()[-1]
+                            if imageName != '.' and imageName != '..':
+                                fileSizesAtStart[imageName] = self.ftp.size(dir + loopDir + '/' + imageName)
                         x = self.loop()
                         filesExist = 0                                  #we'll use this to determine if any real files were in this dir
                         for file in thisDir:                                #loop on files in those directories
@@ -215,52 +232,57 @@ class WeatherProcessor:
                             if fileName not in self.excludeList: #EXCEPTION! UGH!
                                 fileExt = newFileName.split('.')[-1]
                                 if fileExt in self.allowedExts:
-                                    filesExist = 1
-                                    thisImageFolder = localLoopPath + 'new/' + loopDir + '/'
-                                    thisImageName = str(int(time())) + newFileName[0:-4] + '.' + fileExt
-                                    thisImageDestination = localLoopPath
-                                    if os.path.exists(thisImageFolder) == False:        #make this folder if it doesn't already exist.
-                                        os.mkdir(thisImageFolder)
-                                    #print 'DEBUG: saving to ' + thisImageFolder + thisImageName
-                                    try:
-                                        localFile = open(thisImageFolder + thisImageName, 'wb')
-                                    except:
-                                            error = 'RETRIEVE: failed to open for retrieval ' + str(thisImageFolder) + str(thisImageName)
-                                            print error
-                                            self.log(error)
-                                            return -1
-                                    serverFilePath = dir + loopDir + '/' + fileName
-                                    self.ftp.retrbinary('RETR ' + serverFilePath, localFile.write)
-                                    localFile.close()
-                                    self.ftp.delete(serverFilePath)
-                                    if saveStills is True:
-                                        copyPath = localStillPath + 'new/'
-                                        copyName = loopDir + '.' + fileExt
-                                        copy(thisImageFolder + thisImageName, copyPath + copyName)
-                                        y = self.img()
-                                        y.describe(callLetters, copyPath, copyName, localStillPath)
-                                        self.imageList.append(y)
-                                    #for non-gifs, convert them now to save time later.
-                                    if thisImageName[-4:] != '.gif':                     #don't switch to gif if it already is a gif. Duh.
-                                        newName = thisImageName[0:-4] + '.gif'
-                                        #print'DEBUG: Still = ' + still
-                                        try: 
-                                            f = open(thisImageFolder + newName, 'w')
+                                    self.ftp.sendcmd("TYPE I")
+                                    curSize = self.ftp.size(dir + loopDir + '/' + fileName)
+                                    if  curSize == fileSizesAtStart[fileName] and curSize > 0:
+                                        filesExist = 1
+                                        thisImageFolder = localLoopPath + 'new/' + loopDir + '/'
+                                        thisImageName = str(int(time())) + newFileName[0:-4] + '.' + fileExt
+                                        thisImageDestination = localLoopPath
+                                        if os.path.exists(thisImageFolder) == False:        #make this folder if it doesn't already exist.
+                                            os.mkdir(thisImageFolder)
+                                        #print 'DEBUG: saving to ' + thisImageFolder + thisImageName
+                                        try:
+                                            localFile = open(thisImageFolder + thisImageName, 'wb')
                                         except:
-                                            error = 'RETRIEVE: failed to open for retrieval ' + str(thisImageFolder) + str(newName)
-                                            print error
-                                            self.log(error)
-                                            return -1
-                                        t = time()                              #timekeeping
-                                        image = gd.image(thisImageFolder + thisImageName)
-                                        image.writeGif(f)
-                                        self.stilltime += time() - t            #timekeeping
-                                        f.close()
-                                        thisImageName = newName
-                                    #aaaand add it to the gif roster
-                                    if x.numImg() < numFrames:
-                                        #print 'DEBUG: added this image'
-                                        x.addImg(thisImageName)          
+                                                error = 'RETRIEVE: failed to open for retrieval ' + str(thisImageFolder) + str(thisImageName)
+                                                print error
+                                                self.log(error)
+                                                return -1
+                                        serverFilePath = dir + loopDir + '/' + fileName
+                                        self.ftp.retrbinary('RETR ' + serverFilePath, localFile.write)
+                                        localFile.close()
+                                        self.ftp.delete(serverFilePath)
+                                        if saveStills is True:
+                                            copyPath = localStillPath + 'new/'
+                                            copyName = loopDir + '.' + fileExt
+                                            copy(thisImageFolder + thisImageName, copyPath + copyName)
+                                            y = self.img()
+                                            y.describe(callLetters, copyPath, copyName, localStillPath)
+                                            self.imageList.append(y)
+                                        #for non-gifs, convert them now to save time later.
+                                        if thisImageName[-4:] != '.gif':                     #don't switch to gif if it already is a gif. Duh.
+                                            newName = thisImageName[0:-4] + '.gif'
+                                            #print'DEBUG: Still = ' + still
+                                            try: 
+                                                f = open(thisImageFolder + newName, 'w')
+                                            except:
+                                                error = 'RETRIEVE: failed to open for retrieval ' + str(thisImageFolder) + str(newName)
+                                                print error
+                                                self.log(error)
+                                                return -1
+                                            t = time()                              #timekeeping
+                                            image = gd.image(thisImageFolder + thisImageName)
+                                            image.writeGif(f)
+                                            self.stilltime += time() - t            #timekeeping
+                                            f.close()
+                                            thisImageName = newName
+                                        #aaaand add it to the gif roster
+                                        if x.numImg() < numFrames:
+                                            #print 'DEBUG: added this image'
+                                            x.addImg(thisImageName)
+                                    else:
+                                        self.log('DEBUG: File currently still uploading: ' + fileName)
                         if filesExist == 1:
                             #make a loop object to describe this loop, and store it by call letter for easy access.
                             x.describe(callLetters, thisImageFolder, loopDir, loopDir + '.gif', thisImageDestination)
