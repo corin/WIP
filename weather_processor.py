@@ -15,7 +15,7 @@
 #NOTE: SOMETIMES WE SPLIT ON SPACES IN THINGS WHICH CAN INCLUDE DIRECTORIES. IMAGES AND DIRECTORIES CONTAINING SPACES -WILL- BREAK.
 #NOTE: gd is used for nonGIF -> GIF conversion, as it is faster. ImageMagick at command line is used for animating GIFs.
 #   PIL is used for other image functions -- resizing, etc. We could probably do without ImageMagick now that we have GD . . . 
-#NOTE: search for EXCEPTION to find the exception for WHAS -- no max_s.jpg. I broke down and added it, since otherwise, it would look like shit. There's also an exclude list variable in the __init__ function now.
+#NOTE: search for EXCEPTION to find the exception for WHAS -- no max_s. I broke down and added it, since otherwise, it would look like shit. There's also an exclude list variable in the __init__ function now.
 import os
 from ftplib import FTP
 from time import gmtime, strftime, time, mktime, strptime
@@ -36,11 +36,11 @@ class WeatherProcessor:
         self.ftpPassword = 'cruzAk5b'
         self.allowedExts = ['jpg', 'jpeg', 'gif', 'png']
         self.imageList = []
-        self.excludeList = ['max_s.jpg']
+        self.excludeList = ['max_s', 'max_s.jpg', 'max_s.gif']
         
         #loop in each config array -- as profiles!
         self.path = '/var/weather/'
-        #self.log('Started run.')
+        self.log('Started run.')
         profilesPath = self.path + 'profiles/'                          
         self.profilesDictionary = {}
         try:
@@ -86,6 +86,7 @@ class WeatherProcessor:
         print 'Time not spent in IM: ' , self.t7 - self.t1 - self.animtime - self.stilltime
         print 'Time spent in IM for stills: ' , self.stilltime
         print 'Time spent in IM for animations: ' , self.animtime
+        self.log('Finished run.')
         #print 'Time spent in resize: '  ,
         #print 'Time spent in animation: ' ,
 #END OF __init__. Functions and classes begin here. ###
@@ -194,7 +195,7 @@ class WeatherProcessor:
                                 try:
                                     self.ftp.retrbinary('RETR ' + dir + stillName, localFile.write)
                                 except:
-                                    error = 'RETRIEVE: failed to retrieval ' + str(dir) + str(stillName) + ' or failed to write to file.'
+                                    error = 'RETRIEVE: failed to retrieve ' + str(dir) + str(stillName) + ' or failed to write to file.'
                                     print error
                                     self.log(error)
                                     return -1
@@ -203,7 +204,7 @@ class WeatherProcessor:
                                 x.describe(callLetters, thisImagePath, newStillName, localStillPath)
                                 self.imageList.append(x)
                         else:
-                            self.log('DEBUG: file still uploading: ' + stillName)
+                            self.log('file still uploading: ' + stillName)
             
             #Loops are simpler. We'll just get every new file and then delete it.
             #We'll save files to /loops/new/loopname/int(currentepoch)filename.ext
@@ -252,64 +253,73 @@ class WeatherProcessor:
                                         serverFilePath = dir + loopDir + '/' + fileName
                                         self.ftp.retrbinary('RETR ' + serverFilePath, localFile.write)
                                         localFile.close()
-                                        self.ftp.delete(serverFilePath)
-                                        if saveStills is True:
-                                            copyPath = localStillPath + 'new/'
-                                            copyName = loopDir + '.' + fileExt
-                                            copy(thisImageFolder + thisImageName, copyPath + copyName)
-                                            y = self.img()
-                                            y.describe(callLetters, copyPath, copyName, localStillPath)
-                                            self.imageList.append(y)
-                                        #for non-gifs, convert them now to save time later.
-                                        if thisImageName[-4:] != '.gif':                     #don't switch to gif if it already is a gif. Duh.
-                                            newName = thisImageName[0:-4] + '.gif'
-                                            #print'DEBUG: Still = ' + still
-                                            try: 
-                                                f = open(thisImageFolder + newName, 'w')
-                                            except:
-                                                error = 'RETRIEVE: failed to open for retrieval ' + str(thisImageFolder) + str(newName)
-                                                print error
-                                                self.log(error)
-                                                return -1
-                                            t = time()                              #timekeeping
-                                            image = gd.image(thisImageFolder + thisImageName)
-                                            image.writeGif(f)
-                                            self.stilltime += time() - t            #timekeeping
-                                            f.close()
-                                            thisImageName = newName
-                                        #aaaand add it to the gif roster
-                                        if x.numImg() < numFrames:
-                                            #print 'DEBUG: added this image'
-                                            x.addImg(thisImageName)
+                                        if os.path.exists(thisImageFolder + thisImageName):     #let's make sure we actually got the file before going further
+                                            self.ftp.delete(serverFilePath)
+                                            if saveStills is True:
+                                                copyPath = localStillPath + 'new/'
+                                                copyName = loopDir + '.' + fileExt
+                                                copy(thisImageFolder + thisImageName, copyPath + copyName)
+                                                y = self.img()
+                                                y.describe(callLetters, copyPath, copyName, localStillPath)
+                                                self.imageList.append(y)
+                                            #for non-gifs, convert them now to save time later.
+                                            if thisImageName[-4:] != '.gif':                     #don't switch to gif if it already is a gif. Duh.
+                                                newName = thisImageName[0:-4] + '.gif'
+                                                #print'DEBUG: Still = ' + still
+                                                try: 
+                                                    f = open(thisImageFolder + newName, 'w')
+                                                except:
+                                                    error = 'RETRIEVE: failed to open for GIF conversion ' + str(thisImageFolder) + str(newName)
+                                                    print error
+                                                    self.log(error)
+                                                    return -1
+                                                t = time()                              #timekeeping
+                                                image = gd.image(thisImageFolder + thisImageName)
+                                                image.writeGif(f)
+                                                self.stilltime += time() - t            #timekeeping
+                                                f.close()
+                                                os.remove(thisImageFolder + thisImageName)
+                                                thisImageName = newName
+                                            #aaaand add it to the gif roster
+                                            if x.numImg() < numFrames:
+                                                #print 'DEBUG: added this image'
+                                                x.addImg(thisImageName)
+                                        else:
+                                            print 'File did not successfully download. ' + fileName
+                                            self.log('File did not successfully download. ' + fileName)
                                     else:
-                                        self.log('DEBUG: File currently still uploading: ' + fileName)
+                                        self.log('File currently still uploading: ' + fileName)
+                                        
                         if filesExist == 1:
                             #make a loop object to describe this loop, and store it by call letter for easy access.
                             x.describe(callLetters, thisImageFolder, loopDir, loopDir + '.gif', thisImageDestination)
                             #now we need to make sure this loop has enough images . . .
                             #set up modified times dictionary
-                            dumpImgs = os.listdir(x.extraDest)          # getting list of filenames only -- no . or .. provided.
-                            if dumpImgs != [] and x.numImg() < numFrames:
-                                dumpTime = []                                   #initialize
-                                for img in dumpImgs:                            #build localTimes dictionary of current times in local directory
-                                    dumpTime.append({os.path.getmtime(x.extraDest + img):img}) #gets time for local files
-                                    dumpTime.sort()
-                                    dumpTime.reverse()                          #newest first
-                                #take sorted list, and if we need another image, peel off the first dictionary and return the value, then add it to loop obj.
-                                for imgDict in dumpTime:
-                                    if x.numImg() < numFrames:
-                                        for key in imgDict:
-                                            appendImg = imgDict[key]
-                                            #'DEBUG: added image from archive: ' + x.extraDest + appendImg
+                            savedImgs = os.listdir(x.extraDest)          # getting list of filenames only -- no . or .. provided.
+                            if savedImgs != [] and x.numImg() < numFrames:
+                                savedImageTime = []                                   #initialize
+                                for img in savedImgs:                            #build localTimes dictionary of current times in local directory
+                                    savedImageTime.append({os.path.getmtime(x.extraDest + img):img}) #gets time for local files
+                                    savedImageTime.sort()
+                                    savedImageTime.reverse()                          #newest first
+                                #take sorted list, and if we need another image, peel off the first time:image pair and return the image, then add it to loop obj.
+                                for imgTimeDict in savedImageTime:
+                                    for key in imgTimeDict:
+                                        appendImg = imgTimeDict[key]
+                                        #'DEBUG: added image from archive: ' + x.extraDest + appendImg
+                                        if x.numImg() < numFrames:
                                             try:                                            
                                                 copy(x.extraDest + appendImg, x.path + appendImg) 
                                             except:
-                                                error = 'RETRIEVE: failed to move ' + str(x.extraDest) + str(appendImg) + ' to ' + str(x.path) + str(appendImg)
+                                                error = 'RETRIEVE: failed to copy ' + str(x.extraDest) + str(appendImg) + ' to ' + str(x.path) + str(appendImg)
                                                 print error
                                                 self.log(error)
                                                 return -1
-                                        x.addImg(appendImg)
+                                            x.addImg(appendImg)
+                                        else:
+                                            os.remove(x.extraDest + appendImg)     #get rid of any extra frames.
                             self.imageList.append(x)
+
 
     #######################################
     def processImages(self):
@@ -453,6 +463,7 @@ class WeatherProcessor:
         try:
             image = Image.open(path + still)
         except:
+            print 'failed to resize. Does' , path + still , ' exist? ' , os.path.exists(path + still)
             error = 'PROCESS: could not resize ' + str(path) + str(still)
             print error
             self.log(error)
@@ -547,13 +558,18 @@ class WeatherProcessor:
             except:
                 error = 'IMG: failed to move ' + str(self.path) + str(self.name) + ' to ' + str(self.destination) + str(self.name)
                 print error
-                self.parent.log(error)
+                self.log(error)
         def describe(self, callLetters, path, name, destination):
             self.callLetters = callLetters
             self.path = path
             self.name = name
             self.destination = destination
             self.ftpPath = '/' + self.callLetters + '/weather/stills/'
+        def log (self, error):
+            logPath = '/var/weather/log/error.log'
+            logFile = open(logPath, 'a')
+            logFile.write(strftime('%Y-%m-%d %H:%M:%S ', gmtime()) + error + '\n')
+            logFile.close()
     
     #######################################
     class loop:
@@ -563,26 +579,26 @@ class WeatherProcessor:
             self.isLoop = True
         def clean(self):
             #delete any stored images we didn't use, delete the animated images we made, remove the folder in /new.
-            oldImages = os.listdir(self.extraDest)
-            for deleteMe in oldImages:
-                os.remove(self.extraDest + deleteMe)
             oldAnims = os.listdir(self.destination)
             for deleteMe in oldAnims:
                 if deleteMe.find('gif') != -1: 
                     os.remove(self.destination + deleteMe)
             for image in self.images:
-                try:
-                    move(self.path + image, self.extraDest + image)
-                except:
-                    error = 'LOOP/clean: failed to move ' + str(self.path) + str(image) + ' to ' + str(self.extraDest) + str(image)
-                    print error
-                    self.parent.log(error)
+                if os.path.exists(self.extraDest + image) is False:     #only move back images that aren't already there
+                    try:
+                        move(self.path + image, self.extraDest + image)
+                    except:
+                        error = 'LOOP/clean: failed to move ' + str(self.path) + str(image) + ' to ' + str(self.extraDest) + str(image)
+                        print error
+                        self.log(error)
+                else:
+                    os.remove(self.path + image)
             try:
                 rmtree(self.path)
             except:
                 error = 'LOOP/clean: could not remove directory ' + str(self.path)
                 print error
-                self.parent.log(error)
+                self.log(error)
         def describe(self, callLetters, path, loop, name, destination):
             self.callLetters = callLetters
             self.path = path
@@ -599,6 +615,11 @@ class WeatherProcessor:
             self.images.append(image)
         def numImg(self):
             return len(self.images)
+        def log (self, error):
+            logPath = '/var/weather/log/error.log'
+            logFile = open(logPath, 'a')
+            logFile.write(strftime('%Y-%m-%d %H:%M:%S ', gmtime()) + error + '\n')
+            logFile.close()
         def getImgs(self):
             for image in self.images:
                 try:
@@ -606,7 +627,7 @@ class WeatherProcessor:
                 except:
                     error = 'LOOP/getImgs: failed to move ' + str(self.extraDest) + str(image) + ' to ' + str(self.path) + str(image)
                     print error
-                    self.parent.log(error)
+                    self.log(error)
 
 #######################################
 def main():
