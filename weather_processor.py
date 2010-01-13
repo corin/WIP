@@ -370,7 +370,8 @@ class WeatherProcessor:
                         for still in includeImages:
                             for newSize in sizesArray:
                                 self.loopResize(newSize, newDir, path, still)
-                            if imageData.name == topRadar:
+                            if imageData.name[0:-4] == topRadar:
+                                print 'DEBUG: lookit me, I executed.'
                                 self.loopResize('300x225', newDir, path, still)
                         #now we've got a directory of callLetters/loop/tmp/ filled with subdirs named after sizes, filled with versions of this img in the MIFF format.
                         for dir in self.tmpData:
