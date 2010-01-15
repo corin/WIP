@@ -204,7 +204,7 @@ class WeatherProcessor:
                                 x.describe(callLetters, thisImagePath, newStillName, localStillPath)
                                 self.imageList.append(x)
                         else:
-                            self.log('file still uploading: ' + stillName)
+                            self.log('file still uploading: ' + callLetters + '|' + stillName)
             
             #Loops are simpler. We'll just get every new file and then delete it.
             #We'll save files to /loops/new/loopname/int(currentepoch)filename.ext
