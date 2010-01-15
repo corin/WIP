@@ -1,0 +1,6 @@
+#Exceptions list for weather_processor.py
+#data before pipe is a filename or directory name (for stills/loops respectively).
+#data after the pipe is a comma-delimited list of sizes to create for this image/directory
+#Specifying a file here will cause that file to have a unique size array for it and it alone.
+#Files specified here will not use any sizes from the normal size array for their station.
+SnoqualmiePassCam.jpg|704x480;470x320;160x109;120x90

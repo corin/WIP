@@ -41,21 +41,10 @@ class WeatherProcessor:
         #loop in each config array -- as profiles!
         self.path = '/var/weather/'
         self.log('Started run.')
-        profilesPath = self.path + 'profiles/'                          
-        self.profilesDictionary = {}
-        try:
-            profiles = open(profilesPath + 'profiles.txt', 'r')
-        except: 
-            self.log('NO PROFILES FOUND. PLEASE BUILD profiles.txt in ' + profilesPath + '.')
-            return -1
-        for p in profiles:
-            if p[0] != '#':                                             #filter out lines starting w/ pound symbol
-                temp = p.split('|')
-                self.profilesDictionary[temp[0]] = temp[1:]
-        profiles.close()
+        self.getProfiles()
         for callLetters in self.profilesDictionary:
             self.buildFolders(callLetters)
-        
+        self.getExceptionList()
 
 #(1) First, connect to server and get files needed
         tmp = self.connectFTP()                                          
@@ -345,10 +334,13 @@ class WeatherProcessor:
                     if imageData.isLoop == False:
                         print 'Processing still ' , path + name
                         i = 1
-                        for newSize in sizesArray:
+                        if name in self.exceptionList:
+                            thisSizesArray = self.exceptionList[name][0].split(';')
+                        else:
+                            thisSizesArray = sizesArray
+                        for newSize in thisSizesArray:
                             self.stillResize(i, newSize, path, name, callLetters, destination)
                             i += 1
-
                     #LOOPS
                     elif imageData.isLoop == True:
                         includeImages = []
@@ -368,10 +360,13 @@ class WeatherProcessor:
                             os.mkdir(newDir)
                         self.tmpData = {}
                         for still in includeImages:
-                            for newSize in sizesArray:
+                            if name in self.exceptionList:
+                                thisSizesArray = self.exceptionList[name][0].split(';')
+                            else:
+                                thisSizesArray = sizesArray
+                            for newSize in thisSizesArray:
                                 self.loopResize(newSize, newDir, path, still)
                             if imageData.name[0:-4] == topRadar:
-                                print 'DEBUG: lookit me, I executed.'
                                 self.loopResize('300x225', newDir, path, still)
                         #now we've got a directory of callLetters/loop/tmp/ filled with subdirs named after sizes, filled with versions of this img in the MIFF format.
                         for dir in self.tmpData:
@@ -535,6 +530,36 @@ class WeatherProcessor:
         logFile = open(logPath, 'a')
         logFile.write(strftime('%Y-%m-%d %H:%M:%S ', gmtime()) + error + '\n')
         logFile.close()
+    
+    #######################################
+    def getProfiles (self):
+        profilesPath = self.path + 'profiles/'                          
+        self.profilesDictionary = {}
+        try:
+            profiles = open(profilesPath + 'profiles.txt', 'r')
+        except: 
+            self.log('NO PROFILES FOUND. PLEASE BUILD profiles.txt in ' + profilesPath + '.')
+            return -1
+        for p in profiles:
+            if p[0] != '#':                                             #filter out lines starting w/ pound symbol
+                temp = p.split('|')
+                self.profilesDictionary[temp[0]] = temp[1:]
+        profiles.close()
+        
+    #######################################
+    def getExceptionList (self):
+        exceptionsPath = self.path + 'profiles/'                          
+        self.exceptionList = {}
+        try:
+            exceptions = open(exceptionsPath + 'exceptions.txt', 'r')
+        except: 
+            self.log('NO EXCEPTIONS FOUND. PLEASE BUILD exceptions.txt in ' + exceptionsPath + '.')
+            return -1
+        for e in exceptions:
+            if e[0] != '#':                                             #filter out lines starting w/ pound symbol
+                temp = e.split('|')
+                self.exceptionList[temp[0]] = temp[1:]
+        exceptions.close()
     
     #######################################
     #this function just builds out the necessary folders, in case they don't exist.
