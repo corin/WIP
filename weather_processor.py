@@ -12,7 +12,6 @@
 ##      local files and remote loop files will be eliminated after use.
 ##      
 ##################################################################################
-#NOTE: SOMETIMES WE SPLIT ON SPACES IN THINGS WHICH CAN INCLUDE DIRECTORIES. IMAGES AND DIRECTORIES CONTAINING SPACES -WILL- BREAK.
 #NOTE: gd is used for nonGIF -> GIF conversion, as it is faster. ImageMagick at command line is used for animating GIFs.
 #   PIL is used for other image functions -- resizing, etc. We could probably do without ImageMagick now that we have GD . . . 
 #NOTE: search for EXCEPTION to find the exception for WHAS -- no max_s. I broke down and added it, since otherwise, it would look like shit. There's also an exclude list variable in the __init__ function now.
@@ -144,20 +143,20 @@ class WeatherProcessor:
                     self.log(error)
                     return -1
                 self.ftp.dir(stillReturn.append)
+                print stillReturn
                 fileSizesAtStart = {}
                 self.ftp.sendcmd("TYPE I")
                 for still in stillReturn:                               #get file sizes here for comparison later. We need to make sure they aren't still being uploaded.
-                    stillName = still.split()[-1]
+                    stillName = still[66:]
                     if stillName != '.' and stillName != '..':
                         fileSizesAtStart[stillName] = self.ftp.size(dir + stillName)
                 # . . . compare w/ local list and download as needed
                 for still in stillReturn:                               #now compare and download
-                    stillName = still.split()[-1]                       #grab last space-delimited chunk (i.e. name)
+                    stillName = still[66:]                              #grab last space-delimited chunk (i.e. name)
                     newStillName = stillName[0:-4] + stillName[-4:].lower() #lowercase extensions only.
                     stillExt = newStillName[-4:].replace('.', '')
                     if newStillName != '.' and newStillName != '..' and stillExt in self.allowedExts:
-                        stillTime = still.split()[-4:-1]                    #grab last 3 chunks before that (i.e. time info)
-                        stillTime = stillTime[0] + ' ' + stillTime[1] + ' ' + stillTime[2]
+                        stillTime = still[53:65]                    #grab last 3 chunks before that (i.e. time info)
                         if stillTime.find(':') == -1:                         #if there's no colon, then this already has a year
                             tmpTime = int(mktime(strptime(stillTime, '%b %d %Y')))
                         else:
@@ -203,7 +202,7 @@ class WeatherProcessor:
                 self.ftp.cwd(dir)
                 self.ftp.dir(loopDirReturn.append)
                 for loopDir in loopDirReturn:                           #loop on directories in above
-                    loopDir = loopDir.split()[-1]
+                    loopDir = loopDir[66:]
                     if loopDir != '.' and loopDir != '..':
                         thisDir = []
                         self.ftp.cwd(dir + loopDir)
@@ -211,13 +210,13 @@ class WeatherProcessor:
                         fileSizesAtStart = {}
                         self.ftp.sendcmd("TYPE I")
                         for image in thisDir:                               #get file sizes here for comparison later. We need to make sure they aren't still being uploaded.
-                            imageName = image.split()[-1]
+                            imageName = image[66:]
                             if imageName != '.' and imageName != '..':
                                 fileSizesAtStart[imageName] = self.ftp.size(dir + loopDir + '/' + imageName)
                         x = self.loop()
                         filesExist = 0                                  #we'll use this to determine if any real files were in this dir
                         for file in thisDir:                                #loop on files in those directories
-                            fileName = file.split()[-1]
+                            fileName = file[66:]
                             newFileName = fileName[0:-4] + fileName[-4:].lower() #lowercase extensions only.
                             if fileName not in self.excludeList: #EXCEPTION! UGH!
                                 fileExt = newFileName.split('.')[-1]
