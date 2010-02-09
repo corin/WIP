@@ -5,6 +5,6 @@ if ps ax | grep -v grep | grep $SERVICE > /dev/null
 then
     echo "$SERVICE is already running."
 else
-    python /var/weather/weather_processor.py    
+    python /usr/local/lib/weather/weather_processor.py    
     echo "Ran $SERVICE."
 fi
