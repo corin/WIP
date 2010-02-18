@@ -35,7 +35,7 @@ class WeatherProcessor:
         self.t1 = time()
         self.allowedExts = ["jpg", "jpeg", "gif", "png"]
         self.imageList = []
-        self.excludeList = ["max_s", "max_s.jpg", "max_s.gif"]
+        self.excludeList = {"WWL":["max_s.gif"]}
         self.ftpAddy = "origin-belo.bimedia.net"
         self.ftpLogin = "st@belo.bimedia.net"
         self.ftpPassword = "cruzAk5b"
@@ -241,7 +241,11 @@ class WeatherProcessor:
                         for file in thisDir:                                #loop on files in those directories
                             fileName = file[66:]
                             newFileName = fileName[0:-4] + fileName[-4:].lower() #lowercase extensions only.
-                            if fileName not in self.excludeList: #EXCEPTION! UGH!
+                            try:
+                                self.excludeList[callLetters]
+                            except:
+                                self.excludeList[callLetters] = [None]
+                            if fileName not in self.excludeList[callLetters]: #STATION-SPECIFIC EXCEPTION! UGH!
                                 fileExt = newFileName.split(".")[-1]
                                 if fileExt in self.allowedExts:
                                     self.ftp.sendcmd("TYPE I")
